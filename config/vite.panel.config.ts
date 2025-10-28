@@ -4,19 +4,21 @@ import { resolve } from 'path';
 
 export default defineConfig({
   plugins: [react()],
-  root: resolve(__dirname, '../extension/sidepanel'),
-  publicDir: false,
   build: {
     outDir: resolve(__dirname, '../dist'),
     emptyOutDir: false,
     rollupOptions: {
       input: {
         sidepanel: resolve(__dirname, '../extension/sidepanel.html'),
+        main: resolve(__dirname, '../extension/sidepanel/main.tsx'),
       },
       output: {
-        entryFileNames: '[name].js',
+        entryFileNames: 'sidepanel.js',
         chunkFileNames: '[name].js',
-        assetFileNames: '[name].[ext]',
+        assetFileNames: (assetInfo) => {
+          if (assetInfo.name === 'main.css') return 'sidepanel.css';
+          return assetInfo.name || '[name].[ext]';
+        },
       },
     },
   },

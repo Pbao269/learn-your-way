@@ -21,7 +21,11 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
         with:
-          version: 8
+          version: 10
+          run_install: false
+
+      - name: Enable corepack
+        run: corepack enable
 
       - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
@@ -64,7 +68,11 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
         with:
-          version: 8
+          version: 10
+          run_install: false
+
+      - name: Enable corepack
+        run: corepack enable
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
