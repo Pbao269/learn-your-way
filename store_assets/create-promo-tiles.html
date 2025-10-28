@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Promo Tiles</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .tile {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+        
+        /* Small Promo Tile: 440x280 */
+        .small-tile {
+            width: 440px;
+            height: 280px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin: 0 auto 40px;
+        }
+        
+        /* Marquee Promo Tile: 1400x560 */
+        .marquee-tile {
+            width: 1400px;
+            height: 560px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin: 0 auto;
+        }
+        
+        .logo {
+            font-size: 64px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            font-family: 'Arial Black', sans-serif;
+        }
+        
+        .title {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            line-height: 1.2;
+        }
+        
+        .tagline {
+            font-size: 18px;
+            opacity: 0.95;
+            font-weight: 400;
+        }
+        
+        .instructions {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 40px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1 { margin-top: 0; }
+        
+        code {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        
+        .note {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="instructions">
+            <h1>🎨 Promo Tiles Generator</h1>
+            <p>Use your browser's screenshot tool to capture these tiles at the correct dimensions.</p>
+            
+            <div class="note">
+                <strong>💡 Tip:</strong> On macOS, press Cmd+Shift+4, then hold Option to resize the selection to exact pixel dimensions.
+            </div>
+            
+            <h2>How to Use:</h2>
+            <ol>
+                <li>Screenshot the small tile (440x280 pixels)</li>
+                <li>Screenshot the marquee tile (1400x560 pixels)</li>
+                <li>Save as PNG files</li>
+                <li>Upload to Chrome Web Store</li>
+            </ol>
+        </div>
+        
+        <h2 style="text-align: center;">Small Promotional Tile (440x280)</h2>
+        <div class="tile small-tile" id="small-tile">
+            <div class="logo">L</div>
+            <div class="title">LearnMyWay</div>
+            <div class="tagline">Turn docs into micro-lessons</div>
+        </div>
+        
+        <h2 style="text-align: center; margin-top: 60px;">Marquee Promotional Tile (1400x560)</h2>
+        <div class="tile marquee-tile" id="marquee-tile" style="display: none;">
+            <div class="logo">L</div>
+            <div class="title">LearnMyWay</div>
+            <div class="tagline">Transform documentation into bite-sized 10-minute learning sprints</div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 40px;">
+            <button onclick="showMarquee()" style="
+                background: #2563eb;
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 6px;
+                font-size: 16px;
+                cursor: pointer;
+            ">Show Marquee Tile</button>
+        </div>
+    </div>
+    
+    <script>
+        function showMarquee() {
+            document.getElementById('marquee-tile').style.display = 'flex';
+            window.scrollTo({ top: 400, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
+
