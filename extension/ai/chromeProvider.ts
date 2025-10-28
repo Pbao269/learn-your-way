@@ -213,16 +213,16 @@ class ChromeAIProvider implements AIProvider {
     }
   }
 
-  async translate(input: { text: string; to: string }): Promise<string> {
+  async translate(_input: { text: string; to: string }): Promise<string> {
     throw new AIError('Translation not implemented in P0', 'NOT_IMPLEMENTED');
   }
 
   // P1 hooks - stub implementations
-  async explainCode(input: { code: string; lang?: string }): Promise<string> {
+  async explainCode(_input: { code: string; lang?: string }): Promise<string> {
     throw new AIError('Code explanation not implemented in P0', 'NOT_IMPLEMENTED');
   }
 
-  async chooseVisualTemplate(input: { text: string }): Promise<{
+  async chooseVisualTemplate(_input: { text: string }): Promise<{
     template: 'none' | 'flowchart' | 'concept_map' | 'compare';
     params: Record<string, unknown>;
   }> {

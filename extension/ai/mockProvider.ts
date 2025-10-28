@@ -13,7 +13,6 @@ class MockAIProvider implements AIProvider {
     // Simulate processing delay
     await this.delay(300);
 
-    const wordCount = input.text.split(/\s+/).length;
     const summary = this.generateMockSummary(input.text, input.goal);
 
     return {

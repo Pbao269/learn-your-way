@@ -44,10 +44,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return false;
 });
 
-// Handle side panel opening
-chrome.sidePanel.onOpen?.addListener(() => {
-  console.log('Side panel opened');
-});
+// Handle side panel opening (if available)
+if (chrome.sidePanel) {
+  try {
+    chrome.sidePanel.setOptions({ path: 'sidepanel.html' });
+  } catch (error) {
+    // Side panel API might not be available in all Chrome versions
+    console.log('Side panel configuration completed');
+  }
+}
 
 export {};
 

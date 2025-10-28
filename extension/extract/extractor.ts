@@ -100,8 +100,8 @@ function collectContentUntilNextHeading(heading: Element): {
   elements: Element[];
 } {
   const elements: Element[] = [];
-  let textParts: string[] = [];
-  let htmlParts: string[] = [];
+  const textParts: string[] = [];
+  const htmlParts: string[] = [];
   
   let sibling = heading.nextElementSibling;
   

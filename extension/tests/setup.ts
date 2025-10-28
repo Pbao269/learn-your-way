@@ -2,7 +2,7 @@
  * Test setup file
  */
 
-import { expect, afterEach, vi } from 'vitest';
+import { vi } from 'vitest';
 
 // Mock Chrome APIs
 global.chrome = {
@@ -37,5 +37,5 @@ global.chrome = {
   scripting: {
     executeScript: vi.fn(),
   },
-} as any;
+} as never;
 
