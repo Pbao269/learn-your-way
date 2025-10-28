@@ -54,7 +54,7 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: learnmyway-extension-${{ github.sha }}
+          name: learnmyway-extension-${{ matrix.node-version }}-${{ github.sha }}
           path: learnmyway-extension.zip
           retention-days: 30
 
