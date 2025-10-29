@@ -5,7 +5,12 @@
 
 import React from 'react';
 
-const Toolbar: React.FC = () => {
+interface ToolbarProps {
+  onShowChunkManager?: () => void;
+  extractionCount?: number;
+}
+
+const Toolbar: React.FC<ToolbarProps> = ({ onShowChunkManager, extractionCount = 0 }) => {
   return (
     <header className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-10">
       <div className="flex items-center justify-between">
@@ -19,6 +24,18 @@ const Toolbar: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* View All Chunks button */}
+          {onShowChunkManager && extractionCount > 0 && (
+            <button
+              onClick={onShowChunkManager}
+              className="btn-sm btn-primary"
+              title={`View all ${extractionCount} pages`}
+              aria-label="View all chunks"
+            >
+              📚 Chunks ({extractionCount})
+            </button>
+          )}
+
           {/* P1 hooks - disabled in P0 */}
           <button
             className="btn-sm btn-secondary opacity-50 cursor-not-allowed"

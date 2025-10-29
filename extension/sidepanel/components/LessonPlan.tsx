@@ -6,13 +6,14 @@
 import React from 'react';
 import { useSprintStore } from '../state/sprintStore';
 import { exportLessonPlanToMarkdown, downloadMarkdown } from '../lib/markdownExport';
+import Timer from './Timer';
 
 interface LessonPlanProps {
   onStartSprint: () => void;
 }
 
 const LessonPlan: React.FC<LessonPlanProps> = ({ onStartSprint }) => {
-  const { extraction, startSprint, getChunkProgress, progress } = useSprintStore();
+  const { extraction, startSprint, getChunkProgress, progress, sprintStatus } = useSprintStore();
 
   if (!extraction) {
     return null;
@@ -42,6 +43,13 @@ const LessonPlan: React.FC<LessonPlanProps> = ({ onStartSprint }) => {
 
   return (
     <div className="max-w-4xl mx-auto pb-24">
+      {/* Timer Display when sprint is running */}
+      {(sprintStatus === 'running' || sprintStatus === 'paused') && (
+        <div className="mb-6">
+          <Timer />
+        </div>
+      )}
+      
       {/* Header */}
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">{extraction.pageTitle}</h2>

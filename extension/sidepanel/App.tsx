@@ -8,12 +8,15 @@ import { useSprintStore } from './state/sprintStore';
 import LessonPlan from './components/LessonPlan';
 import SprintView from './components/SprintView';
 import Toolbar from './components/Toolbar';
+import type { PageExtraction } from '../extract/types';
 
 type View = 'lesson' | 'sprint';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('lesson');
-  const { extraction, sprintStatus, loadProgress } = useSprintStore();
+  const [showChunkManager, setShowChunkManager] = useState(false);
+  const [allExtractions, setAllExtractions] = useState<Record<string, PageExtraction>>({});
+  const { extraction, sprintStatus, loadProgress, setExtraction } = useSprintStore();
 
   // Load progress on mount
   useEffect(() => {
@@ -37,13 +40,55 @@ const App: React.FC = () => {
     setCurrentView('lesson');
   };
 
+  // Load all extractions from storage on mount
+  useEffect(() => {
+    const loadAllExtractions = async () => {
+      if (typeof chrome !== 'undefined' && chrome.storage) {
+        const result = await chrome.storage.local.get('allExtractions');
+        if (result.allExtractions) {
+          setAllExtractions(result.allExtractions);
+        }
+      }
+    };
+    loadAllExtractions();
+  }, []);
+
+  // Save extraction to multi-page storage
+  useEffect(() => {
+    if (extraction) {
+      setAllExtractions(prev => {
+        const updated = { ...prev, [extraction.pageUrl]: extraction };
+        // Save to Chrome storage
+        if (typeof chrome !== 'undefined' && chrome.storage) {
+          chrome.storage.local.set({ allExtractions: updated });
+        }
+        return updated;
+      });
+    }
+  }, [extraction]);
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <Toolbar />
+      <Toolbar 
+        onShowChunkManager={() => setShowChunkManager(true)}
+        extractionCount={Object.keys(allExtractions).length}
+      />
       
       <main className="p-4">
-        {!extraction ? (
-          <WelcomeScreen />
+        {showChunkManager ? (
+          <ChunkManager 
+            extractions={allExtractions}
+            onSelectExtraction={(extraction) => {
+              setExtraction(extraction);
+              setShowChunkManager(false);
+            }}
+            onClose={() => setShowChunkManager(false)}
+          />
+        ) : !extraction ? (
+          <WelcomeScreen 
+            onShowChunkManager={() => setShowChunkManager(true)}
+            allExtractions={allExtractions}
+          />
         ) : currentView === 'lesson' ? (
           <LessonPlan onStartSprint={handleStartSprint} />
         ) : (
@@ -78,7 +123,12 @@ const App: React.FC = () => {
   );
 };
 
-const WelcomeScreen: React.FC = () => {
+interface WelcomeScreenProps {
+  onShowChunkManager: () => void;
+  allExtractions: Record<string, PageExtraction>;
+}
+
+const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onShowChunkManager, allExtractions }) => {
   const { setExtraction, setIsLoading, isLoading } = useSprintStore();
 
   const handleExtractContent = async () => {
@@ -88,8 +138,20 @@ const WelcomeScreen: React.FC = () => {
       // Get current tab
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-      if (!tab.id) {
+      if (!tab.id || !tab.url) {
         throw new Error('No active tab found');
+      }
+
+      // Check if we already have chunks for this page
+      if (allExtractions[tab.url]) {
+        const confirmed = window.confirm(
+          `You already have chunks from this page. Extract new content?\n\n` +
+          `Old chunks will be archived and can be accessed via "View All Chunks".`
+        );
+        if (!confirmed) {
+          setIsLoading(false);
+          return;
+        }
       }
 
       // Request content extraction from content script
@@ -129,6 +191,120 @@ const WelcomeScreen: React.FC = () => {
 
       <div className="mt-8 text-sm text-gray-500">
         <p>📚 Navigate to any documentation page and click the button above.</p>
+      </div>
+
+      {/* View All Chunks button */}
+      {Object.keys(allExtractions).length > 0 && (
+        <button
+          onClick={onShowChunkManager}
+          className="mt-4 btn-secondary"
+          aria-label="View all chunks"
+        >
+          📚 View All Chunks ({Object.keys(allExtractions).length})
+        </button>
+      )}
+    </div>
+  );
+};
+
+interface ChunkManagerProps {
+  extractions: Record<string, PageExtraction>;
+  onSelectExtraction: (extraction: PageExtraction) => void;
+  onClose: () => void;
+}
+
+const ChunkManager: React.FC<ChunkManagerProps> = ({ extractions, onSelectExtraction, onClose }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  const handleDelete = async (url: string) => {
+    if (window.confirm('Are you sure you want to delete this page\'s chunks?')) {
+      const updated = { ...extractions };
+      delete updated[url];
+      
+      if (typeof chrome !== 'undefined' && chrome.storage) {
+        await chrome.storage.local.set({ allExtractions: updated });
+      }
+      
+      // Force re-render - in real implementation, pass as prop or use state management
+      window.location.reload();
+    }
+  };
+
+  const filteredExtractions = Object.entries(extractions).filter(([url, extraction]) => {
+    const query = searchQuery.toLowerCase();
+    return extraction.pageTitle.toLowerCase().includes(query) ||
+           url.toLowerCase().includes(query);
+  });
+
+  return (
+    <div className="max-w-4xl mx-auto pb-24">
+      <div className="mb-6 flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-900">All Chunks</h2>
+        <button onClick={onClose} className="btn-secondary">
+          ← Back
+        </button>
+      </div>
+
+      {/* Search */}
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Search pages..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+        />
+      </div>
+
+      {/* Extraction list */}
+      <div className="space-y-4">
+        {filteredExtractions.length === 0 ? (
+          <div className="card text-center py-12">
+            <p className="text-gray-500">
+              {searchQuery ? 'No pages found.' : 'No chunks yet. Extract content from a page to get started.'}
+            </p>
+          </div>
+        ) : (
+          filteredExtractions.map(([url, extraction]) => (
+            <div key={url} className="card hover:shadow-md transition-shadow">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{extraction.pageTitle}</h3>
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-primary-600 hover:underline"
+                  >
+                    {url}
+                  </a>
+                  <div className="mt-3 flex items-center gap-4 text-sm text-gray-600">
+                    <span>{extraction.chunks.length} chunks</span>
+                    {extraction.license && (
+                      <span className="badge-secondary">
+                        {extraction.license.kind}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => onSelectExtraction(extraction)}
+                    className="btn-primary"
+                  >
+                    Open
+                  </button>
+                  <button
+                    onClick={() => handleDelete(url)}
+                    className="btn-secondary text-red-600 hover:bg-red-50"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

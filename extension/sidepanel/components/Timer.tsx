@@ -7,10 +7,44 @@ import React, { useEffect, useRef } from 'react';
 import { useSprintStore } from '../state/sprintStore';
 
 const Timer: React.FC = () => {
-  const { sprintStatus, sprintTimeRemaining, setTimeRemaining, pauseSprint, resumeSprint, completeSprint } =
+  const { sprintStatus, sprintTimeRemaining, setTimeRemaining, pauseSprint, resumeSprint, completeSprint, currentChunk } =
     useSprintStore();
   
   const intervalRef = useRef<number | null>(null);
+
+  // Save timer state to Chrome storage
+  useEffect(() => {
+    const saveTimerState = async () => {
+      if (typeof chrome !== 'undefined' && chrome.storage && currentChunk) {
+        await chrome.storage.local.set({ 
+          lastTimerState: { 
+            timeRemaining: sprintTimeRemaining, 
+            status: sprintStatus,
+            chunkId: currentChunk.id
+          } 
+        });
+      }
+    };
+    
+    // Debounce saves to avoid too many writes
+    const timeoutId = setTimeout(saveTimerState, 500);
+    return () => clearTimeout(timeoutId);
+  }, [sprintTimeRemaining, sprintStatus, currentChunk]);
+
+  // Load timer state on mount
+  useEffect(() => {
+    const loadTimerState = async () => {
+      if (typeof chrome !== 'undefined' && chrome.storage && sprintStatus !== 'idle') {
+        const result = await chrome.storage.local.get('lastTimerState');
+        if (result.lastTimerState && currentChunk && result.lastTimerState.chunkId === currentChunk.id) {
+          // Only restore if it's the same chunk
+          setTimeRemaining(result.lastTimerState.timeRemaining);
+        }
+      }
+    };
+    
+    loadTimerState();
+  }, []); // Only run on mount
 
   useEffect(() => {
     if (sprintStatus === 'running') {
