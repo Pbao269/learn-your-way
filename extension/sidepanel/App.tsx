@@ -40,6 +40,23 @@ const App: React.FC = () => {
     setCurrentView('lesson');
   };
 
+  const handleDeleteExtraction = async (url: string) => {
+    if (!window.confirm('Are you sure you want to delete this page\'s chunks?')) {
+      return;
+    }
+
+    setAllExtractions(prev => {
+      const updated = { ...prev };
+      delete updated[url];
+
+      if (typeof chrome !== 'undefined' && chrome.storage) {
+        chrome.storage.local.set({ allExtractions: updated });
+      }
+
+      return updated;
+    });
+  };
+
   // Load all extractions from storage on mount
   useEffect(() => {
     const loadAllExtractions = async () => {
@@ -92,6 +109,7 @@ const App: React.FC = () => {
               setExtraction(extraction);
               setShowChunkManager(false);
             }}
+            onDeleteExtraction={handleDeleteExtraction}
             onClose={() => setShowChunkManager(false)}
           />
         ) : !extraction ? (
@@ -253,23 +271,15 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onShowChunkManager, allEx
 interface ChunkManagerProps {
   extractions: Record<string, PageExtraction>;
   onSelectExtraction: (extraction: PageExtraction) => void;
+  onDeleteExtraction: (url: string) => void;
   onClose: () => void;
 }
 
-const ChunkManager: React.FC<ChunkManagerProps> = ({ extractions, onSelectExtraction, onClose }) => {
+const ChunkManager: React.FC<ChunkManagerProps> = ({ extractions, onSelectExtraction, onDeleteExtraction, onClose }) => {
   const [searchQuery, setSearchQuery] = useState('');
   
-  const handleDelete = async (url: string) => {
-    if (window.confirm('Are you sure you want to delete this page\'s chunks?')) {
-      const updated = { ...extractions };
-      delete updated[url];
-      
-      if (typeof chrome !== 'undefined' && chrome.storage) {
-        await chrome.storage.local.set({ allExtractions: updated });
-      }
-      
-      setAllExtractions(updated);
-    }
+  const handleDelete = (url: string) => {
+    onDeleteExtraction(url);
   };
 
   const filteredExtractions = Object.entries(extractions).filter(([url, extraction]) => {
