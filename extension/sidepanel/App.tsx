@@ -135,15 +135,16 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onShowChunkManager, allEx
     setIsLoading(true);
 
     try {
-      // Get current tab
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      // Get the active tab from the last focused normal window (not the side panel)
+      const win = await chrome.windows.getLastFocused({ populate: true, windowTypes: ['normal'] });
+      const activeTab = (win.tabs || []).find(t => t.active);
 
-      if (!tab.id || !tab.url) {
+      if (!activeTab?.id || !activeTab.url) {
         throw new Error('No active tab found');
       }
 
       // Check if we already have chunks for this page
-      if (allExtractions[tab.url]) {
+      if (allExtractions[activeTab.url]) {
         const confirmed = window.confirm(
           `You already have chunks from this page. Extract new content?\n\n` +
           `Old chunks will be archived and can be accessed via "View All Chunks".`
@@ -155,7 +156,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onShowChunkManager, allEx
       }
 
       // Request content extraction from content script
-      const response = await chrome.tabs.sendMessage(tab.id, { action: 'extractContent' });
+      const response = await chrome.tabs.sendMessage(activeTab.id, { action: 'extractContent' });
 
       if (response.success) {
         setExtraction(response.data);
