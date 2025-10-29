@@ -60,7 +60,7 @@ function extractChunks(doc: Document, baseUrl: string): LessonChunk[] {
   
   // If we have good H2 coverage, use H2-only strategy
   // Otherwise fall back to H2 + H3
-  const minWordCountPerH2 = 80; // Lower threshold for flexibility
+  const minWordCountPerH2 = 40; // Allow shorter documentation sections
   const maxTotalChunks = 8;
   
   if (h2Headings.length >= 2) {
@@ -74,7 +74,7 @@ function extractChunks(doc: Document, baseUrl: string): LessonChunk[] {
       // Collect content until next H2 (or end of document)
       const content = collectContentUntilNextHeading(heading, 'h2');
       
-      if (!content.text || content.text.length < 30) {
+      if (!content.text || content.text.length < 20) {
         return; // Skip very short sections (titles only)
       }
 
@@ -92,7 +92,7 @@ function extractChunks(doc: Document, baseUrl: string): LessonChunk[] {
             chunks.push(chunk);
           }
         });
-      } else if (wordCount >= minWordCountPerH2) {
+      } else if (wordCount >= minWordCountPerH2 || chunks.length === 0) {
         chunks.push({
           id,
           title,
@@ -120,14 +120,14 @@ function extractChunks(doc: Document, baseUrl: string): LessonChunk[] {
       // Collect until next heading at same or higher level
       const content = collectContentUntilNextHeading(heading, tagName);
       
-      if (!content.text || content.text.length < 50) {
+      if (!content.text || content.text.length < 25) {
         return;
       }
 
       const codeBlocks = extractCodeBlocks(content.elements);
       const wordCount = content.text.split(/\s+/).length;
 
-      if (wordCount >= 50 && chunks.length < maxTotalChunks) {
+      if (wordCount >= 30 && chunks.length < maxTotalChunks) {
         chunks.push({
           id,
           title,
@@ -421,17 +421,13 @@ function createFallbackChunk(doc: Document, baseUrl: string): LessonChunk[] {
   const text = body.textContent?.trim() || '';
   const html = DOMPurify.sanitize(body.innerHTML || '');
 
-  // Take first ~300 words
-  const words = text.split(/\s+/).slice(0, 300);
-  const truncatedText = words.join(' ');
-
   const codeBlocks = extractCodeBlocks([body]);
 
   return [
     {
       id: 'fallback-1',
       title: 'Page Content',
-      text: truncatedText,
+      text,
       html,
       codeBlocks,
       anchors: {

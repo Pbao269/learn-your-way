@@ -51,6 +51,16 @@ const App: React.FC = () => {
       }
     };
     loadAllExtractions();
+
+    if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
+      const handleStorageChange: Parameters<typeof chrome.storage.onChanged.addListener>[0] = (changes, areaName) => {
+        if (areaName === 'local' && changes.allExtractions) {
+          setAllExtractions(changes.allExtractions.newValue || {});
+        }
+      };
+      chrome.storage.onChanged.addListener(handleStorageChange);
+      return () => chrome.storage.onChanged.removeListener(handleStorageChange);
+    }
   }, []);
 
   // Save extraction to multi-page storage
@@ -258,8 +268,7 @@ const ChunkManager: React.FC<ChunkManagerProps> = ({ extractions, onSelectExtrac
         await chrome.storage.local.set({ allExtractions: updated });
       }
       
-      // Force re-render - in real implementation, pass as prop or use state management
-      window.location.reload();
+      setAllExtractions(updated);
     }
   };
 
