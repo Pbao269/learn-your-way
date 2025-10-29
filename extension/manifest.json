@@ -5,6 +5,7 @@
   "description": "Turn long documentation pages into micro-lessons delivered in 10-minute focus sprints",
   "permissions": [
     "activeTab",
+    "tabs",
     "storage",
     "sidePanel",
     "scripting"

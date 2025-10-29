@@ -135,16 +135,46 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onShowChunkManager, allEx
     setIsLoading(true);
 
     try {
-      // Get the active tab from the last focused normal window (not the side panel)
-      const win = await chrome.windows.getLastFocused({ populate: true, windowTypes: ['normal'] });
-      const activeTab = (win.tabs || []).find(t => t.active);
+      const webUrl = /^https?:\/\//i;
 
-      if (!activeTab?.id || !activeTab.url) {
+      const pickWebTab = (tabs: chrome.tabs.Tab[] | undefined) =>
+        tabs?.find(tab => tab.url && webUrl.test(tab.url || ''));
+
+      // 1) Prefer the active tab in the current window (the visible doc next to the side panel)
+      let [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+      // 2) If that isn’t a web tab, try the last focused normal window (covers side panel focus cases)
+      if (!activeTab || !activeTab.url || !webUrl.test(activeTab.url)) {
+        const [focusedTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true, windowType: 'normal' });
+        if (focusedTab && focusedTab.url && webUrl.test(focusedTab.url)) {
+          activeTab = focusedTab;
+        }
+      }
+
+      // 3) Consider other active tabs across normal windows
+      if (!activeTab || !activeTab.url || !webUrl.test(activeTab.url)) {
+        const activeNormals = await chrome.tabs.query({ active: true, windowType: 'normal' });
+        const candidate = pickWebTab(activeNormals);
+        if (candidate) {
+          activeTab = candidate;
+        }
+      }
+
+      // 4) Finally, scan all known http(s) tabs (requires "tabs" permission)
+      if (!activeTab || !activeTab.url || !webUrl.test(activeTab.url)) {
+        const webTabs = await chrome.tabs.query({ url: ['http://*/*', 'https://*/*'] });
+        const candidate = pickWebTab(webTabs);
+        if (candidate) {
+          activeTab = candidate;
+        }
+      }
+
+      if (!activeTab?.id || !activeTab.url || !webUrl.test(activeTab.url)) {
         throw new Error('No active tab found');
       }
 
       // Check if we already have chunks for this page
-      if (allExtractions[activeTab.url]) {
+      if (activeTab.url && allExtractions[activeTab.url]) {
         const confirmed = window.confirm(
           `You already have chunks from this page. Extract new content?\n\n` +
           `Old chunks will be archived and can be accessed via "View All Chunks".`
@@ -156,13 +186,15 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onShowChunkManager, allEx
       }
 
       // Request content extraction from content script
-      const response = await chrome.tabs.sendMessage(activeTab.id, { action: 'extractContent' });
+      const response = await chrome.tabs.sendMessage(activeTab.id, { action: 'extractContent' }).catch(err => {
+        return { success: false, error: (chrome.runtime.lastError && chrome.runtime.lastError.message) || String(err) } as any;
+      });
 
       if (response.success) {
         setExtraction(response.data);
       } else {
         console.error('Extraction failed:', response.error);
-        alert('Failed to extract content. Please try again on a documentation page.');
+        alert('Failed to extract content. Make sure:\n\n• You have a normal HTTP/HTTPS tab focused (not chrome://, extensions, or the side panel).\n• The page finished loading and allows scripts.');
       }
     } catch (error) {
       console.error('Failed to extract content:', error);
