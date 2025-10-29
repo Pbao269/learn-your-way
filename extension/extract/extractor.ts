@@ -49,52 +49,281 @@ export function extractPage(doc: Document): PageExtraction {
 
 /**
  * Extract chunks based on H2 and H3 headings
- * Targets 3-8 chunks with 120-300 words each
+ * Improved for modern documentation structures (AWS, Azure, MongoDB, etc.)
+ * Targets 3-8 chunks with 80-500 words each
  */
 function extractChunks(doc: Document, baseUrl: string): LessonChunk[] {
   const chunks: LessonChunk[] = [];
-  const headings = doc.querySelectorAll('h2, h3');
+  
+  // First, try to find H2 headings (primary sections)
+  const h2Headings = doc.querySelectorAll('h2');
+  
+  // If we have good H2 coverage, use H2-only strategy
+  // Otherwise fall back to H2 + H3
+  const minWordCountPerH2 = 80; // Lower threshold for flexibility
+  const maxTotalChunks = 8;
+  
+  if (h2Headings.length >= 2) {
+    // Strategy 1: H2-only chunks (best for well-structured docs)
+    h2Headings.forEach((heading, index) => {
+      if (chunks.length >= maxTotalChunks) return;
+      
+      const title = heading.textContent?.trim() || `Section ${index + 1}`;
+      const id = heading.id || `chunk-${index}`;
 
-  headings.forEach((heading, index) => {
-    const title = heading.textContent?.trim() || `Section ${index + 1}`;
-    const id = heading.id || `chunk-${index}`;
+      // Collect content until next H2 (or end of document)
+      const content = collectContentUntilNextHeading(heading, 'h2');
+      
+      if (!content.text || content.text.length < 30) {
+        return; // Skip very short sections (titles only)
+      }
 
-    // Collect content until next heading
-    const content = collectContentUntilNextHeading(heading);
+      // Extract code blocks
+      const codeBlocks = extractCodeBlocks(content.elements);
+
+      // Calculate word count
+      const wordCount = content.text.split(/\s+/).length;
+      
+      // Smart chunking: if section is too large (>500 words), split it
+      if (wordCount > 500) {
+        const splitChunks = splitLargeSection(content, title, id, baseUrl);
+        splitChunks.forEach(chunk => {
+          if (chunks.length < maxTotalChunks) {
+            chunks.push(chunk);
+          }
+        });
+      } else if (wordCount >= minWordCountPerH2) {
+        chunks.push({
+          id,
+          title,
+          text: content.text,
+          html: content.html,
+          codeBlocks,
+          anchors: {
+            url: `${baseUrl}${heading.id ? `#${heading.id}` : ''}`,
+            startId: heading.id,
+          },
+        });
+      }
+    });
+  } else {
+    // Strategy 2: H2 + H3 fallback (for less structured content)
+    const allHeadings = doc.querySelectorAll('h2, h3');
     
-    if (!content.text || content.text.length < 50) {
-      return; // Skip too-short sections
-    }
+    allHeadings.forEach((heading, index) => {
+      if (chunks.length >= maxTotalChunks) return;
+      
+      const title = heading.textContent?.trim() || `Section ${index + 1}`;
+      const id = heading.id || `chunk-${index}`;
+      const tagName = heading.tagName.toLowerCase();
 
-    // Extract code blocks
-    const codeBlocks = extractCodeBlocks(content.elements);
+      // Collect until next heading at same or higher level
+      const content = collectContentUntilNextHeading(heading, tagName);
+      
+      if (!content.text || content.text.length < 50) {
+        return;
+      }
 
-    // Calculate word count
-    const wordCount = content.text.split(/\s+/).length;
+      const codeBlocks = extractCodeBlocks(content.elements);
+      const wordCount = content.text.split(/\s+/).length;
 
-    // Only include chunks between 120-300 words (or at least 50 words)
-    if (wordCount >= 50 && chunks.length < 8) {
-      chunks.push({
-        id,
-        title,
-        text: content.text,
-        html: content.html,
-        codeBlocks,
-        anchors: {
-          url: `${baseUrl}${heading.id ? `#${heading.id}` : ''}`,
-          startId: heading.id,
-        },
-      });
-    }
-  });
+      if (wordCount >= 50 && chunks.length < maxTotalChunks) {
+        chunks.push({
+          id,
+          title,
+          text: content.text,
+          html: content.html,
+          codeBlocks,
+          anchors: {
+            url: `${baseUrl}${heading.id ? `#${heading.id}` : ''}`,
+            startId: heading.id,
+          },
+        });
+      }
+    });
+  }
+
+  // If we still don't have enough chunks, try to merge very short sections
+  if (chunks.length < 3 && chunks.length > 0) {
+    return mergeShortSections(chunks);
+  }
 
   return chunks;
 }
 
 /**
+ * Split large sections into smaller chunks based on H3 headings or paragraphs
+ */
+function splitLargeSection(
+  content: { text: string; html: string; elements: Element[] },
+  title: string,
+  id: string,
+  baseUrl: string
+): LessonChunk[] {
+  const subChunks: LessonChunk[] = [];
+  
+  // Look for H3 subsections within the large H2 section
+  const subHeadings = content.elements.filter(el => 
+    el.matches('h3') || el.querySelector('h3')
+  );
+
+  if (subHeadings.length > 0) {
+    // Split by H3 headings
+    let currentText = '';
+    let currentHtml = '';
+    let chunkIndex = 0;
+
+    content.elements.forEach((el, idx) => {
+      if (el.matches('h3')) {
+        // Save previous chunk
+        if (currentText.trim().length >= 80) {
+          subChunks.push({
+            id: `${id}-${chunkIndex}`,
+            title: el.textContent?.trim() || `${title} - Part ${chunkIndex + 1}`,
+            text: currentText.trim(),
+            html: currentHtml.trim(),
+            codeBlocks: extractCodeBlocks(
+              content.elements.filter((_, i) => i < idx && i >= chunkIndex * 100)
+            ),
+            anchors: {
+              url: `${baseUrl}#${id}-${chunkIndex}`,
+              startId: el.id,
+            },
+          });
+          chunkIndex++;
+          currentText = '';
+          currentHtml = '';
+        }
+      } else {
+        const text = el.textContent?.trim();
+        if (text) {
+          currentText += text + ' ';
+          currentHtml += el.outerHTML;
+        }
+      }
+    });
+
+    // Add remaining content
+    if (currentText.trim().length >= 50) {
+      subChunks.push({
+        id: `${id}-${chunkIndex}`,
+        title: `${title} - Continued`,
+        text: currentText.trim(),
+        html: currentHtml.trim(),
+        codeBlocks: extractCodeBlocks(content.elements),
+        anchors: {
+          url: `${baseUrl}#${id}-${chunkIndex}`,
+        },
+      });
+    }
+  } else {
+    // Split by paragraphs for large content without H3
+    const paragraphs = content.elements.filter(el => 
+      el.matches('p, ul, ol, blockquote, pre, div') && 
+      el.textContent && el.textContent.trim().length > 50
+    );
+    
+    // Group paragraphs into ~250-word chunks
+    let currentGroup: Element[] = [];
+    let currentWordCount = 0;
+    let chunkIndex = 0;
+
+    paragraphs.forEach((el) => {
+      const wordCount = el.textContent?.split(/\s+/).length || 0;
+      
+      if (currentWordCount + wordCount > 250 && currentGroup.length > 0) {
+        // Save current chunk
+        const chunkText = currentGroup.map(e => e.textContent?.trim()).join(' ');
+        const chunkHtml = currentGroup.map(e => DOMPurify.sanitize(e.outerHTML)).join('\n');
+        
+        subChunks.push({
+          id: `${id}-${chunkIndex}`,
+          title: `${title} - Part ${chunkIndex + 1}`,
+          text: chunkText,
+          html: chunkHtml,
+          codeBlocks: extractCodeBlocks(currentGroup),
+          anchors: {
+            url: `${baseUrl}#${id}-${chunkIndex}`,
+          },
+        });
+        
+        chunkIndex++;
+        currentGroup = [el];
+        currentWordCount = wordCount;
+      } else {
+        currentGroup.push(el);
+        currentWordCount += wordCount;
+      }
+    });
+
+    // Add remaining content
+    if (currentGroup.length > 0 && currentWordCount >= 80) {
+      const chunkText = currentGroup.map(e => e.textContent?.trim()).join(' ');
+      const chunkHtml = currentGroup.map(e => DOMPurify.sanitize(e.outerHTML)).join('\n');
+      
+      subChunks.push({
+        id: `${id}-${chunkIndex}`,
+        title: `${title} - Part ${chunkIndex + 1}`,
+        text: chunkText,
+        html: chunkHtml,
+        codeBlocks: extractCodeBlocks(currentGroup),
+        anchors: {
+          url: `${baseUrl}#${id}-${chunkIndex}`,
+        },
+      });
+    }
+  }
+
+  return subChunks.length > 0 ? subChunks : [{
+    id,
+    title,
+    text: content.text,
+    html: content.html,
+    codeBlocks: extractCodeBlocks(content.elements),
+    anchors: {
+      url: `${baseUrl}${id ? `#${id}` : ''}`,
+      startId: id,
+    },
+  }];
+}
+
+/**
+ * Merge very short sections to avoid too few chunks
+ */
+function mergeShortSections(chunks: LessonChunk[]): LessonChunk[] {
+  if (chunks.length <= 1) return chunks;
+  
+  const merged: LessonChunk[] = [];
+  let currentChunk = { ...chunks[0] };
+  
+  for (let i = 1; i < chunks.length; i++) {
+    const nextChunk = chunks[i];
+    const combinedWordCount = 
+      (currentChunk.text.split(/\s+/).length + nextChunk.text.split(/\s+/).length);
+    
+    if (combinedWordCount < 500) {
+      // Merge chunks
+      currentChunk = {
+        ...currentChunk,
+        title: `${currentChunk.title} & ${nextChunk.title}`,
+        text: `${currentChunk.text}\n\n${nextChunk.text}`,
+        html: `${currentChunk.html}\n${nextChunk.html}`,
+        codeBlocks: [...currentChunk.codeBlocks, ...nextChunk.codeBlocks],
+      };
+    } else {
+      merged.push(currentChunk);
+      currentChunk = nextChunk;
+    }
+  }
+  
+  merged.push(currentChunk);
+  return merged;
+}
+
+/**
  * Collect content between this heading and the next
  */
-function collectContentUntilNextHeading(heading: Element): {
+function collectContentUntilNextHeading(heading: Element, untilLevel: string = 'h2'): {
   text: string;
   html: string;
   elements: Element[];
@@ -104,10 +333,11 @@ function collectContentUntilNextHeading(heading: Element): {
   const htmlParts: string[] = [];
   
   let sibling = heading.nextElementSibling;
+  const stopHeadings = untilLevel === 'h2' ? 'h1, h2' : 'h1, h2, h3';
   
   while (sibling) {
     // Stop at next heading of same or higher level
-    if (sibling.matches('h1, h2, h3')) {
+    if (sibling.matches(stopHeadings)) {
       break;
     }
 
