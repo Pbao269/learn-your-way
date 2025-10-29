@@ -3,6 +3,12 @@
   "name": "LearnMyWay",
   "version": "1.0.0",
   "description": "Turn long documentation pages into micro-lessons delivered in 10-minute focus sprints",
+  "trial_tokens": [
+    "AmnKt+Vu7OQIDMqKjR/lJueOpSLFOGgJYD0+c3gWDmmziW1GYdkdoLG49LArWverfF411bRnOzJlAzyL5S8T4Q4AAABseyJvcmlnaW4iOiJjaHJvbWUtZXh0ZW5zaW9uOi8vbmZkbGFka2toYWZjbGRsY2doZmJnZG5kZGNtaGFuZGUiLCJmZWF0dXJlIjoiQUlXcml0ZXJBUEkiLCJleHBpcnkiOjE3Njk0NzIwMDB9",
+    "AjIRrC8hJdoe9jp994gWd1B0ylHZqlbhzaNex7esioAcxHYpPnyR1je/dOaYYenGa047Kju7XmTgve9BNmBnFAIAAABxeyJvcmlnaW4iOiJjaHJvbWUtZXh0ZW5zaW9uOi8vbmZkbGFka2toYWZjbGRsY2doZmJnZG5kZGNtaGFuZGUiLCJmZWF0dXJlIjoiQUlQcm9vZnJlYWRlckFQSSIsImV4cGlyeSI6MTc3OTE0ODgwMH0=",
+    "AgOPvLOBVmF6sRiNhS4lVI7NjFfxn9dZne+Nm4t/RgYTTeXRogIkhHa7FHIc/JgRtyCJbIijF3DlX803iTuSaA4AAAB7eyJvcmlnaW4iOiJjaHJvbWUtZXh0ZW5zaW9uOi8vbmZkbGFka2toYWZjbGRsY2doZmJnZG5kZGNtaGFuZGUiLCJmZWF0dXJlIjoiQUlQcm9tcHRBUElNdWx0aW1vZGFsSW5wdXQiLCJleHBpcnkiOjE3NzQzMTA0MDB9",
+    "AnAdvxXA8iM2FegZKbsFQUsQHpChw1FtmRcuHIQt41WrdS4jw9kTvgqv98SgYumZ4c1mbS4ezAx0QXdwMUGW1wEAAABueyJvcmlnaW4iOiJjaHJvbWUtZXh0ZW5zaW9uOi8vbmZkbGFka2toYWZjbGRsY2doZmJnZG5kZGNtaGFuZGUiLCJmZWF0dXJlIjoiQUlSZXdyaXRlckFQSSIsImV4cGlyeSI6MTc2OTQ3MjAwMH0="
+  ],
   "permissions": [
     "activeTab",
     "tabs",
